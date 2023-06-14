@@ -2,17 +2,20 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"senao-auth-srv/db"
 	"senao-auth-srv/util"
 )
 
 type Server struct {
-	config util.Config
-	router *gin.Engine
+	config   util.Config
+	database *db.Database
+	router   *gin.Engine
 }
 
-func New(config util.Config) (*Server, error) {
+func New(config util.Config, database *db.Database) (*Server, error) {
 	srv := &Server{
-		config: config,
+		config:   config,
+		database: database,
 	}
 
 	srv.setupRouter()

@@ -11,6 +11,9 @@ type Config struct {
 
 	ServerHost string `mapstructure:"SERVER_HOST"`
 	ServerPort int32  `mapstructure:"SERVER_PORT"`
+
+	RedisHost string `mapstructure:"REDIS_HOST"`
+	RedisPort int32  `mapstructure:"REDIS_PORT"`
 }
 
 func LoadConfig(path string) (config Config, err error) {

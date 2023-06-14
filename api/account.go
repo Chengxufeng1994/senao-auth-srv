@@ -21,8 +21,6 @@ type creatAccountResponse struct {
 	Reason  string `json:"reason"`
 }
 
-var accounts []model.Account
-
 func ValidationErrorToText(e validator.FieldError) string {
 	switch e.Tag() {
 	case "required":
@@ -50,7 +48,7 @@ func (srv *Server) createAccount(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, res)
 		return
 	}
-
+	accounts, _ := srv.database.GetAccounts()
 	for _, account := range accounts {
 		if account.Username == req.Username {
 			res.Success = false
@@ -66,7 +64,13 @@ func (srv *Server) createAccount(ctx *gin.Context) {
 		Password:    req.Password,
 		FailedCount: 0,
 	}
-	accounts = append(accounts, account)
+	_, err := srv.database.CreateAccount(&account)
+	if err != nil {
+		res.Success = false
+		res.Reason = "CreateAccount Failed, " + err.Error()
+		ctx.JSON(http.StatusBadRequest, res)
+		return
+	}
 
 	res.Success = true
 	res.Reason = ""
@@ -83,25 +87,6 @@ type verifyAccountResponse struct {
 	Reason  string `json:"reason"`
 }
 
-func getAccountByUsername(username string) (model.Account, error) {
-	for _, account := range accounts {
-		if account.Username == username {
-			return account, nil
-		}
-	}
-
-	return model.Account{}, fmt.Errorf("%s not found", username)
-}
-
-func updateAccount(updateAccount model.Account) {
-	for i, account := range accounts {
-		if account.Username == updateAccount.Username {
-			accounts[i] = updateAccount
-			break
-		}
-	}
-}
-
 func (srv *Server) verifyAccount(ctx *gin.Context) {
 	var req verifyAccountRequest
 	var res verifyAccountResponse
@@ -114,7 +99,7 @@ func (srv *Server) verifyAccount(ctx *gin.Context) {
 		return
 	}
 
-	existedAccount, err := getAccountByUsername(req.Username)
+	existedAccount, err := srv.database.GetAccountsByUsername(req.Username)
 	if err != nil {
 		res.Success = false
 		res.Reason = err.Error()
@@ -139,7 +124,7 @@ func (srv *Server) verifyAccount(ctx *gin.Context) {
 		if existedAccount.FailedCount >= 5 {
 			existedAccount.FailedExpireSec = time.Now().Unix() + RetrySec
 		}
-		updateAccount(existedAccount)
+		srv.database.UpdateAccount(existedAccount)
 		res.Success = false
 		res.Reason = "Unauthorized"
 		ctx.JSON(http.StatusUnauthorized, res)
@@ -148,6 +133,6 @@ func (srv *Server) verifyAccount(ctx *gin.Context) {
 
 	existedAccount.FailedExpireSec = 0
 	existedAccount.FailedCount = 0
-	updateAccount(existedAccount)
+	srv.database.UpdateAccount(existedAccount)
 	ctx.JSON(http.StatusOK, existedAccount)
 }
