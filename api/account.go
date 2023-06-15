@@ -60,6 +60,13 @@ func (srv *Server) createAccount(ctx *gin.Context) {
 			return
 		}
 	}
+	isValidatedPassword := util.ValidatePassword(req.Password)
+	if !isValidatedPassword {
+		res.Success = false
+		res.Reason = "Password is not valid"
+		ctx.JSON(http.StatusBadRequest, res)
+		return
+	}
 
 	hashedPassword, err := util.HashPassword(req.Password)
 	if err != nil {
@@ -144,5 +151,6 @@ func (srv *Server) verifyAccount(ctx *gin.Context) {
 	existedAccount.FailedExpireSec = 0
 	existedAccount.FailedCount = 0
 	srv.database.UpdateAccount(existedAccount)
-	ctx.JSON(http.StatusOK, existedAccount)
+	res.Success = true
+	ctx.JSON(http.StatusOK, res)
 }
