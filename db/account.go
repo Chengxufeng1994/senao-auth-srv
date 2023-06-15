@@ -2,8 +2,10 @@ package db
 
 import (
 	"fmt"
+
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
+
 	"senao-auth-srv/model"
 )
 

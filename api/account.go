@@ -62,6 +62,7 @@ func (srv *Server) createAccount(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, res)
 		return
 	}
+
 	accounts, _ := srv.database.GetAccounts()
 	for _, account := range accounts {
 		if account.Username == req.Username {
@@ -71,6 +72,7 @@ func (srv *Server) createAccount(ctx *gin.Context) {
 			return
 		}
 	}
+
 	isValidatedPassword := util.ValidatePassword(req.Password)
 	if !isValidatedPassword {
 		res.Success = false
@@ -145,24 +147,31 @@ func (srv *Server) verifyAccount(ctx *gin.Context) {
 	}
 
 	if existedAccount.FailedCount >= 5 {
-		now := time.Now().Unix()
-		if now < existedAccount.FailedExpireSec {
+		result, err := srv.database.Client.Get(fmt.Sprintf("accounts:retry:%s", existedAccount.Id)).Result()
+		if err != nil {
+			if err.Error() != "redis: nil" {
+				res.Success = false
+				res.Reason = fmt.Sprintf("Redis get accounts:retry:%s", err.Error())
+				ctx.JSON(http.StatusUnauthorized, res)
+				return
+			}
+		}
+
+		if result == "true" {
 			res.Success = false
 			res.Reason = "Pleas try again after one minutes"
 			ctx.JSON(http.StatusUnauthorized, res)
 			return
-		} else {
-			existedAccount.FailedCount = 0
 		}
+
+		existedAccount.FailedCount = 0
 	}
 
 	err = util.CheckPassword(req.Password, existedAccount.Password)
 	if err != nil {
 		existedAccount.FailedCount++
-		if existedAccount.FailedCount >= 5 {
-			existedAccount.FailedExpireSec = time.Now().Unix() + RetrySec
-		}
 		srv.database.UpdateAccount(existedAccount)
+		srv.database.Client.Set(fmt.Sprintf("accounts:retry:%s", existedAccount.Id), "true", RetrySec*time.Second)
 		res.Success = false
 		res.Reason = "Unauthorized"
 		ctx.JSON(http.StatusUnauthorized, res)
