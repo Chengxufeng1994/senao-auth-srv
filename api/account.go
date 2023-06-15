@@ -2,11 +2,14 @@ package api
 
 import (
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"net/http"
+
 	"senao-auth-srv/model"
-	"time"
+	"senao-auth-srv/util"
 )
 
 const RetrySec = 60
@@ -57,14 +60,20 @@ func (srv *Server) createAccount(ctx *gin.Context) {
 			return
 		}
 	}
-	// TODO: Password validator
 
+	hashedPassword, err := util.HashPassword(req.Password)
+	if err != nil {
+		res.Success = false
+		res.Reason = "Hashed password failed"
+		ctx.JSON(http.StatusInternalServerError, res)
+		return
+	}
 	account := model.Account{
 		Username:    req.Username,
-		Password:    req.Password,
+		Password:    hashedPassword,
 		FailedCount: 0,
 	}
-	_, err := srv.database.CreateAccount(&account)
+	_, err = srv.database.CreateAccount(&account)
 	if err != nil {
 		res.Success = false
 		res.Reason = "CreateAccount Failed, " + err.Error()
@@ -119,7 +128,8 @@ func (srv *Server) verifyAccount(ctx *gin.Context) {
 		}
 	}
 
-	if existedAccount.Password != req.Password {
+	err = util.CheckPassword(req.Password, existedAccount.Password)
+	if err != nil {
 		existedAccount.FailedCount++
 		if existedAccount.FailedCount >= 5 {
 			existedAccount.FailedExpireSec = time.Now().Unix() + RetrySec

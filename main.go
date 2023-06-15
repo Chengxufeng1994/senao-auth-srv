@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"os"
+
 	"senao-auth-srv/api"
 	"senao-auth-srv/db"
 
@@ -22,7 +24,8 @@ func main() {
 	}
 
 	redisAddr := fmt.Sprintf("%s:%d", config.RedisHost, config.RedisPort)
-	database, err := db.New(redisAddr)
+	redisPassword := config.RedisPassword
+	database, err := db.New(redisAddr, redisPassword)
 	if err != nil {
 		log.Fatal().Msg("cannot connect database")
 	}

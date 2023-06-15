@@ -8,10 +8,10 @@ type Database struct {
 	Client *redis.Client
 }
 
-func New(address string) (*Database, error) {
+func New(address string, password string) (*Database, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     address,
-		Password: "",
+		Password: password,
 		DB:       0,
 	})
 

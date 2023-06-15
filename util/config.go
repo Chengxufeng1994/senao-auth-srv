@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 )
@@ -12,8 +13,9 @@ type Config struct {
 	ServerHost string `mapstructure:"SERVER_HOST"`
 	ServerPort int32  `mapstructure:"SERVER_PORT"`
 
-	RedisHost string `mapstructure:"REDIS_HOST"`
-	RedisPort int32  `mapstructure:"REDIS_PORT"`
+	RedisHost     string `mapstructure:"REDIS_HOST"`
+	RedisPort     int32  `mapstructure:"REDIS_PORT"`
+	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
