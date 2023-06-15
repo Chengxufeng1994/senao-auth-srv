@@ -40,6 +40,17 @@ func ValidationErrorToText(e validator.FieldError) string {
 	return fmt.Sprintf("%s is not valid", e.Field())
 }
 
+// CreateAccount godoc
+// @Summary create account
+// @Schemes
+// @Description create account following parameters
+// @Tags 	account
+// @Accept  json
+// @Produce json
+// @Param   createAccountRequest body createAccountRequest true "create account parameters"
+// @Success 200 {object} creatAccountResponse
+// @Failed 	200 {object} creatAccountResponse
+// @Router 	/register [post]
 func (srv *Server) createAccount(ctx *gin.Context) {
 	var req createAccountRequest
 	var res creatAccountResponse
@@ -103,6 +114,16 @@ type verifyAccountResponse struct {
 	Reason  string `json:"reason"`
 }
 
+// VerifyAccount godoc
+// @Summary verify account
+// @Schemes
+// @Description verify account
+// @Tags 	account
+// @Accept  json
+// @Produce json
+// @Param   verifyAccountRequest body verifyAccountRequest true "create account parameters"
+// @Success 200 {object} verifyAccountResponse
+// @Router 	/verify [post]
 func (srv *Server) verifyAccount(ctx *gin.Context) {
 	var req verifyAccountRequest
 	var res verifyAccountResponse

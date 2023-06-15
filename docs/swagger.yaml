@@ -1,0 +1,91 @@
+definitions:
+  api.creatAccountResponse:
+    properties:
+      reason:
+        type: string
+      success:
+        type: boolean
+    type: object
+  api.createAccountRequest:
+    properties:
+      password:
+        maxLength: 32
+        minLength: 8
+        type: string
+      username:
+        maxLength: 32
+        minLength: 3
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  api.verifyAccountRequest:
+    properties:
+      password:
+        maxLength: 32
+        minLength: 8
+        type: string
+      username:
+        maxLength: 32
+        minLength: 3
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  api.verifyAccountResponse:
+    properties:
+      reason:
+        type: string
+      success:
+        type: boolean
+    type: object
+info:
+  contact: {}
+paths:
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: create account following parameters
+      parameters:
+      - description: create account parameters
+        in: body
+        name: createAccountRequest
+        required: true
+        schema:
+          $ref: '#/definitions/api.createAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.creatAccountResponse'
+      summary: create account
+      tags:
+      - account
+  /verify:
+    post:
+      consumes:
+      - application/json
+      description: verify account
+      parameters:
+      - description: create account parameters
+        in: body
+        name: verifyAccountRequest
+        required: true
+        schema:
+          $ref: '#/definitions/api.verifyAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.verifyAccountResponse'
+      summary: verify account
+      tags:
+      - account
+swagger: "2.0"

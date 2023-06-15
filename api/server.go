@@ -2,9 +2,16 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
 	"senao-auth-srv/db"
+	"senao-auth-srv/docs"
 	"senao-auth-srv/util"
 )
+
+// @BasePath /api/v1
 
 type Server struct {
 	config   util.Config
@@ -24,10 +31,15 @@ func New(config util.Config, database *db.Database) (*Server, error) {
 
 func (srv *Server) setupRouter() {
 	router := gin.Default()
+	docs.SwaggerInfo.BasePath = "/api/v1"
 
-	router.POST("/register", srv.createAccount)
-	router.POST("/verify", srv.verifyAccount)
+	v1 := router.Group("/api/v1")
+	{
+		v1.POST("/register", srv.createAccount)
+		v1.POST("/verify", srv.verifyAccount)
+	}
 
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	srv.router = router
 }
 
