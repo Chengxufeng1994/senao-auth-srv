@@ -1,5 +1,5 @@
 redis:
-	docker run --name redis -d -p 6379:6379 --restart=always redis:7-alpine
+	docker run --name redis -d -p 6379:6379 --network=senao-network --restart=always redis:7-alpine
 
 server:
 	go run main.go
@@ -13,4 +13,4 @@ docker-build:
 docker-start:
 	docker run --rm -it --name senao-auth-srv -p 8000:8000 senao-auth-srv:latest
 
-.PHONY: redis docs server docker-build
+.PHONY: network redis docs server docker-build

@@ -13,6 +13,11 @@ It will provide APIs for the frontend to do the following things:
 
 ## Setup infrastructure
 
+* Create the network
+  ```bash
+  docker network create senao-network
+  ```
+
 * Create the redis
 
   ```bash
@@ -28,22 +33,38 @@ It will provide APIs for the frontend to do the following things:
 
 2. Docker
 
-  * Build docker image
+    * Build docker image
 
-    ```bash
-    docker build -t <image-name> --no-cache -f Dockerfile .
-    ```
+      ```bash
+      docker build -t <image-name> --no-cache -f Dockerfile .
+      ```
 
-  * Start docker container
+    * Start docker container
 
-    ```bash
-    docker run --name <container-name> --it -p 8000:8000 <image-naem>
-    ```
+      ```bash
+      docker run --name <container-name> --it -p 8000:8000 <image-naem>
+      ```
 
 3. Docker-compose
+
     ```bash
     docker compose up --build
     ```
+
+4. From Docker hub
+    * Pull Image
+    
+       ```bash
+       docker pull benny0329/senao-auth-srv
+       ```
+      
+    * Start docker container
+
+      ```bash
+      docker run --name <container-name> --it -p 8000:8000 --network=senao-network \
+      -e REDIS_HOST=<redis_container_name>
+      <image-name>
+       ```
 
 ### Environment variables
 
@@ -74,5 +95,6 @@ following this address: http://localhost:8000/swagger/index.html
 * [x] Support docker-compose
 * [ ] Relational database
 * [ ] Microservice
-* [ ] kubernetes (deployment, service)
+* [ ] Kubernetes (deployment, service)
 * [ ] View Log (ELK)
+* [ ] Monitoring (Grafana, Prometheus)
