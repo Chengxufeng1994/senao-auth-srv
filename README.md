@@ -42,7 +42,9 @@ It will provide APIs for the frontend to do the following things:
     * Start docker container
 
       ```bash
-      docker run --name <container-name> --it -p 8000:8000 <image-naem>
+      docker run --name <container-name> --it -p 8000:8000 --network=senao-network \
+      -e REDIS_HOST=<redis_container_name>
+      <image-name>
       ```
 
 3. Docker-compose
