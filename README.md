@@ -15,21 +15,35 @@ It will provide APIs for the frontend to do the following things:
 
 * Create the redis
 
-```makefile
-make redis
-```
+  ```bash
+  make redis
+  ```
 
-* Build docker image
+## How to run
 
-```bash
-docker build -t <image-name> --no-cache -f Dockerfile .
-```
+1. Local
+   ```bash
+   make server
+   ```
 
-* Start docker container
+2. Docker
 
-```bash
-docker run --name <container-name> --it -p 8000:8000 <image-naem>
-```
+  * Build docker image
+
+    ```bash
+    docker build -t <image-name> --no-cache -f Dockerfile .
+    ```
+
+  * Start docker container
+
+    ```bash
+    docker run --name <container-name> --it -p 8000:8000 <image-naem>
+    ```
+
+3. Docker-compose
+    ```bash
+    docker compose up --build
+    ```
 
 ### Environment variables
 
@@ -57,6 +71,7 @@ following this address: http://localhost:8000/swagger/index.html
 
 ## TODO
 
+* [x] Support docker-compose
 * [ ] Relational database
 * [ ] Microservice
 * [ ] kubernetes (deployment, service)

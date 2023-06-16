@@ -1,0 +1,38 @@
+version: "3"
+services:
+  redis:
+    container_name: redis
+    image: redis:7-alpine
+    restart: always
+    networks:
+      - senao-network
+    volumes:
+      - redis-data:/data
+  srv:
+    container_name: srv
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: senao-auth-srv
+    networks:
+      - senao-network
+    ports:
+      - 8000:8000
+    entrypoint: [ "/usr/app/wait-for.sh", "redis:6379", "--", "/usr/app/start.sh" ]
+    command: ["/usr/app/main"]
+    depends_on:
+      - redis
+    environment:
+      - GIN_MODE=release
+      - ENVIRONMENT=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+volumes:
+  redis-data: {}
+
+networks:
+  senao-network:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16

@@ -18,7 +18,10 @@ WORKDIR /usr/app
 
 COPY --from=builder /usr/app/main .
 COPY app.env .
+COPY start.sh .
+COPY wait-for.sh .
 
 EXPOSE 8000
 
-ENTRYPOINT ["/usr/app/main"]
+ENTRYPOINT ["/usr/app/start.sh"]
+CMD ["/usr/app/main"]
