@@ -97,6 +97,6 @@ following this address: http://localhost:8000/swagger/index.html
 * [x] Support docker-compose
 * [ ] Relational database
 * [ ] Microservice
-* [ ] Kubernetes (deployment, service)
+* [x] Kubernetes (deployment, service)
 * [ ] View Log (ELK)
 * [ ] Monitoring (Grafana, Prometheus)
