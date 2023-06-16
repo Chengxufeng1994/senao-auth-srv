@@ -15,6 +15,7 @@ spec:
       labels:
         app: auth
     spec:
+      restartPolicy: Always
       containers:
         - name: auth
           image: benny0329/senao-auth-srv

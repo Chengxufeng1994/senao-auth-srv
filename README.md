@@ -67,6 +67,18 @@ It will provide APIs for the frontend to do the following things:
       -e REDIS_HOST=<redis_container_name>
       <image-name>
        ```
+5. Minikube
+ 
+   * setup minikube
+     ```bash
+     minikube start
+     ``` 
+
+   * skaffold 
+     ```bash
+     skaffold dev
+     ``` 
+     
 
 ### Environment variables
 

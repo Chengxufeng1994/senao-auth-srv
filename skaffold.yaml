@@ -1,0 +1,18 @@
+apiVersion: skaffold/v4beta5
+kind: Config
+metadata:
+  name: senao-auth-srv
+build:
+  local:
+    push: false
+  artifacts:
+    - image: benny0329/senao-auth-srv
+      docker:
+        dockerfile: Dockerfile
+      sync:
+        manual:
+          - dest: .
+            src: '**/*.go'
+manifests:
+  rawYaml:
+    - k8s/*

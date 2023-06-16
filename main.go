@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -25,8 +26,21 @@ func main() {
 
 	redisAddr := fmt.Sprintf("%s:%d", config.RedisHost, config.RedisPort)
 	redisPassword := config.RedisPassword
-	database, err := db.New(redisAddr, redisPassword)
-	if err != nil {
+	database := db.New(redisAddr, redisPassword)
+	dbRetryConn := 3
+	isDbConn := false
+	for i := 0; i < dbRetryConn; i++ {
+		err = database.Conn()
+		if err != nil {
+			isDbConn = false
+			log.Error().Msgf("retry connect database %d", i+1)
+		} else {
+			isDbConn = true
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
+	if !isDbConn {
 		log.Fatal().Msg("cannot connect database")
 	}
 
