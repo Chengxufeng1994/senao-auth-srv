@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -20,7 +21,10 @@ func main() {
 		log.Fatal().Msg("cannot load config")
 	}
 
-	if config.Environment == "development" {
+	if config.Environment == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	} else if config.Environment == "development" {
+		gin.SetMode(gin.DebugMode)
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	}
 
