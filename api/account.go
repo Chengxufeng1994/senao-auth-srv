@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 
+	_senaoAuthSrvErrors "senao-auth-srv/errors"
 	"senao-auth-srv/model"
 	"senao-auth-srv/util"
 )
@@ -55,37 +56,32 @@ func (srv *Server) createAccount(ctx *gin.Context) {
 	var req createAccountRequest
 	var res creatAccountResponse
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ve := err.(validator.ValidationErrors)
-		e := ve[0]
-		res.Success = false
-		res.Reason = ValidationErrorToText(e)
-		ctx.JSON(http.StatusBadRequest, res)
+		if validationErrors, ok := err.(validator.ValidationErrors); ok {
+			validationError := validationErrors[0]
+			ctx.Error(_senaoAuthSrvErrors.New(http.StatusBadRequest, false, ValidationErrorToText(validationError)))
+		} else {
+			ctx.Error(_senaoAuthSrvErrors.New(http.StatusBadRequest, false, "Request body incorrect"))
+		}
 		return
 	}
 
 	accounts, _ := srv.database.GetAccounts()
 	for _, account := range accounts {
 		if account.Username == req.Username {
-			res.Success = false
-			res.Reason = "Username already exists"
-			ctx.JSON(http.StatusBadRequest, res)
+			ctx.Error(_senaoAuthSrvErrors.New(http.StatusBadRequest, false, "Username already exists"))
 			return
 		}
 	}
 
 	isValidatedPassword := util.ValidatePassword(req.Password)
 	if !isValidatedPassword {
-		res.Success = false
-		res.Reason = "Password is not valid"
-		ctx.JSON(http.StatusBadRequest, res)
+		ctx.Error(_senaoAuthSrvErrors.New(http.StatusBadRequest, false, "Password is not valid"))
 		return
 	}
 
 	hashedPassword, err := util.HashPassword(req.Password)
 	if err != nil {
-		res.Success = false
-		res.Reason = "Hashed password failed"
-		ctx.JSON(http.StatusInternalServerError, res)
+		ctx.Error(_senaoAuthSrvErrors.New(http.StatusBadRequest, false, "Hashed password failed"))
 		return
 	}
 	account := model.Account{
@@ -95,14 +91,11 @@ func (srv *Server) createAccount(ctx *gin.Context) {
 	}
 	_, err = srv.database.CreateAccount(&account)
 	if err != nil {
-		res.Success = false
-		res.Reason = "CreateAccount Failed, " + err.Error()
-		ctx.JSON(http.StatusBadRequest, res)
+		ctx.Error(_senaoAuthSrvErrors.New(http.StatusBadRequest, false, "Create account failed: "+err.Error()))
 		return
 	}
 
 	res.Success = true
-	res.Reason = ""
 	ctx.JSON(http.StatusOK, res)
 }
 
@@ -130,19 +123,18 @@ func (srv *Server) verifyAccount(ctx *gin.Context) {
 	var req verifyAccountRequest
 	var res verifyAccountResponse
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ve := err.(validator.ValidationErrors)
-		e := ve[0]
-		res.Success = false
-		res.Reason = ValidationErrorToText(e)
-		ctx.JSON(http.StatusBadRequest, res)
+		if validationErrors, ok := err.(validator.ValidationErrors); ok {
+			validationError := validationErrors[0]
+			ctx.Error(_senaoAuthSrvErrors.New(http.StatusBadRequest, false, ValidationErrorToText(validationError)))
+		} else {
+			ctx.Error(_senaoAuthSrvErrors.New(http.StatusBadRequest, false, "Request body incorrect"))
+		}
 		return
 	}
 
 	existedAccount, err := srv.database.GetAccountsByUsername(req.Username)
 	if err != nil {
-		res.Success = false
-		res.Reason = err.Error()
-		ctx.JSON(http.StatusBadRequest, res)
+		ctx.Error(_senaoAuthSrvErrors.New(http.StatusBadRequest, false, "Get account failed: "+err.Error()))
 		return
 	}
 
@@ -150,17 +142,13 @@ func (srv *Server) verifyAccount(ctx *gin.Context) {
 		result, err := srv.database.Client.Get(fmt.Sprintf("accounts:retry:%s", existedAccount.Id)).Result()
 		if err != nil {
 			if err.Error() != "redis: nil" {
-				res.Success = false
-				res.Reason = fmt.Sprintf("Redis get accounts:retry:%s", err.Error())
-				ctx.JSON(http.StatusUnauthorized, res)
+				ctx.Error(_senaoAuthSrvErrors.New(http.StatusInternalServerError, false, "Get account:retry failed: "+err.Error()))
 				return
 			}
 		}
 
 		if result == "true" {
-			res.Success = false
-			res.Reason = "Pleas try again after one minutes"
-			ctx.JSON(http.StatusUnauthorized, res)
+			ctx.Error(_senaoAuthSrvErrors.New(http.StatusUnauthorized, false, "Pleas try again after one minutes"))
 			return
 		}
 
@@ -172,9 +160,7 @@ func (srv *Server) verifyAccount(ctx *gin.Context) {
 		existedAccount.FailedCount++
 		srv.database.UpdateAccount(existedAccount)
 		srv.database.Client.Set(fmt.Sprintf("accounts:retry:%s", existedAccount.Id), "true", RetrySec*time.Second)
-		res.Success = false
-		res.Reason = "Unauthorized"
-		ctx.JSON(http.StatusUnauthorized, res)
+		ctx.Error(_senaoAuthSrvErrors.New(http.StatusUnauthorized, false, "Verify failed"))
 		return
 	}
 

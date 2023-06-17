@@ -8,6 +8,7 @@ import (
 
 	"senao-auth-srv/db"
 	"senao-auth-srv/docs"
+	"senao-auth-srv/middleware"
 	"senao-auth-srv/util"
 )
 
@@ -31,8 +32,9 @@ func New(config util.Config, database *db.Database) (*Server, error) {
 
 func (srv *Server) setupRouter() {
 	router := gin.Default()
-	docs.SwaggerInfo.BasePath = "/api/v1"
+	router.Use(middleware.ErrorHandler())
 
+	docs.SwaggerInfo.BasePath = "/api/v1"
 	v1 := router.Group("/api/v1")
 	{
 		v1.POST("/register", srv.createAccount)
@@ -45,8 +47,4 @@ func (srv *Server) setupRouter() {
 
 func (srv *Server) Start(addr string) error {
 	return srv.router.Run(addr)
-}
-
-func errorResponse(err error) gin.H {
-	return gin.H{"error": err.Error()}
 }
