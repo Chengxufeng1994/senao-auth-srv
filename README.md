@@ -107,6 +107,7 @@ following this address: http://localhost:8000/swagger/index.html
 ## TODO
 
 * [x] Support docker-compose
+* [x] Github CI/CD
 * [ ] Relational database
 * [ ] Microservice
 * [x] Kubernetes (deployment, service)
