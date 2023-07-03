@@ -9,6 +9,8 @@ import (
 	"senao-auth-srv/db"
 	"senao-auth-srv/docs"
 	"senao-auth-srv/middleware"
+	"senao-auth-srv/repository"
+	"senao-auth-srv/service"
 	"senao-auth-srv/util"
 )
 
@@ -33,12 +35,13 @@ func New(config util.Config, database *db.Database) (*Server, error) {
 func (srv *Server) setupRouter() {
 	router := gin.Default()
 	router.Use(middleware.ErrorHandler())
+	accountRepo := repository.NewAccountRepoImpl(srv.database)
+	accountSvc := service.NewAccountServiceImpl(accountRepo)
 
 	docs.SwaggerInfo.BasePath = "/api/v1"
 	v1 := router.Group("/api/v1")
 	{
-		v1.POST("/register", srv.createAccount)
-		v1.POST("/verify", srv.verifyAccount)
+		NewAccountHandler(v1, accountSvc)
 	}
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))

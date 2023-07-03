@@ -3,17 +3,27 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 
 	_senaoAuthSrvErrors "senao-auth-srv/errors"
 	"senao-auth-srv/model"
+	"senao-auth-srv/service"
 	"senao-auth-srv/util"
 )
 
-const RetrySec = 60
+type AccountHandler struct {
+	accountService service.AccountService
+}
+
+func NewAccountHandler(router *gin.RouterGroup, accountService service.AccountService) {
+	h := AccountHandler{
+		accountService,
+	}
+	router.POST("/register", h.createAccount)
+	router.POST("/verify", h.verifyAccount)
+}
 
 type createAccountRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=32"`
@@ -52,7 +62,7 @@ func ValidationErrorToText(e validator.FieldError) string {
 // @Success 200 {object} creatAccountResponse
 // @Failed 	200 {object} creatAccountResponse
 // @Router 	/register [post]
-func (srv *Server) createAccount(ctx *gin.Context) {
+func (h *AccountHandler) createAccount(ctx *gin.Context) {
 	var req createAccountRequest
 	var res creatAccountResponse
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -65,7 +75,7 @@ func (srv *Server) createAccount(ctx *gin.Context) {
 		return
 	}
 
-	accounts, _ := srv.database.GetAccounts()
+	accounts, _ := h.accountService.GetAccounts(ctx)
 	for _, account := range accounts {
 		if account.Username == req.Username {
 			ctx.Error(_senaoAuthSrvErrors.New(http.StatusBadRequest, false, "Username already exists"))
@@ -89,7 +99,7 @@ func (srv *Server) createAccount(ctx *gin.Context) {
 		Password:    hashedPassword,
 		FailedCount: 0,
 	}
-	_, err = srv.database.CreateAccount(&account)
+	err = h.accountService.CreateAccount(ctx, &account)
 	if err != nil {
 		ctx.Error(_senaoAuthSrvErrors.New(http.StatusBadRequest, false, "Create account failed: "+err.Error()))
 		return
@@ -119,7 +129,7 @@ type verifyAccountResponse struct {
 // @Param   verifyAccountRequest body verifyAccountRequest true "create account parameters"
 // @Success 200 {object} verifyAccountResponse
 // @Router 	/verify [post]
-func (srv *Server) verifyAccount(ctx *gin.Context) {
+func (h *AccountHandler) verifyAccount(ctx *gin.Context) {
 	var req verifyAccountRequest
 	var res verifyAccountResponse
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -132,14 +142,14 @@ func (srv *Server) verifyAccount(ctx *gin.Context) {
 		return
 	}
 
-	existedAccount, err := srv.database.GetAccountsByUsername(req.Username)
+	existedAccount, err := h.accountService.GetAccountsByUsername(ctx, req.Username)
 	if err != nil {
 		ctx.Error(_senaoAuthSrvErrors.New(http.StatusBadRequest, false, "Get account failed: "+err.Error()))
 		return
 	}
 
 	if existedAccount.FailedCount >= 5 {
-		result, err := srv.database.Client.Get(fmt.Sprintf("accounts:retry:%s", existedAccount.Id)).Result()
+		result, err := h.accountService.GetAccountRetryById(ctx, existedAccount.Id)
 		if err != nil {
 			if err.Error() != "redis: nil" {
 				ctx.Error(_senaoAuthSrvErrors.New(http.StatusInternalServerError, false, "Get account:retry failed: "+err.Error()))
@@ -158,15 +168,15 @@ func (srv *Server) verifyAccount(ctx *gin.Context) {
 	err = util.CheckPassword(req.Password, existedAccount.Password)
 	if err != nil {
 		existedAccount.FailedCount++
-		srv.database.UpdateAccount(existedAccount)
-		srv.database.Client.Set(fmt.Sprintf("accounts:retry:%s", existedAccount.Id), "true", RetrySec*time.Second)
+		h.accountService.UpdateAccount(ctx, existedAccount)
+		h.accountService.UpdateAccountRetryById(ctx, existedAccount.Id)
 		ctx.Error(_senaoAuthSrvErrors.New(http.StatusUnauthorized, false, "Verify failed"))
 		return
 	}
 
 	existedAccount.FailedExpireSec = 0
 	existedAccount.FailedCount = 0
-	srv.database.UpdateAccount(existedAccount)
+	h.accountService.UpdateAccount(ctx, existedAccount)
 	res.Success = true
 	ctx.JSON(http.StatusOK, res)
 }
