@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,22 +32,30 @@ func main() {
 	redisAddr := fmt.Sprintf("%s:%d", config.RedisHost, config.RedisPort)
 	redisPassword := config.RedisPassword
 	database := db.New(redisAddr, redisPassword)
-	dbRetryConn := 3
-	isDbConn := false
-	for i := 0; i < dbRetryConn; i++ {
-		err = database.Conn()
-		if err != nil {
-			isDbConn = false
-			log.Error().Msgf("retry connect database %d", i+1)
-		} else {
-			isDbConn = true
-			break
+
+	const maxRetries int = 3
+	const timeout = 3
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		var retries int
+		for {
+			_, err = database.Conn()
+			if err == nil {
+				log.Info().Msg("connect to database successfully")
+				break
+			}
+			retries++
+			if retries == maxRetries {
+				log.Fatal().Msg("cannot connect to database")
+			}
+			log.Error().Msgf("connect to database - retrying... %d", retries)
+			time.Sleep(timeout * time.Second)
 		}
-		time.Sleep(5 * time.Second)
-	}
-	if !isDbConn {
-		log.Fatal().Msg("cannot connect database")
-	}
+		wg.Done()
+	}()
+	wg.Wait()
 
 	runGinSrv(config, database)
 }

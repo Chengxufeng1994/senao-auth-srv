@@ -20,11 +20,6 @@ func New(address string, password string) *Database {
 	}
 }
 
-func (db *Database) Conn() error {
-	_, err := db.Client.Ping().Result()
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (db *Database) Conn() (string, error) {
+	return db.Client.Ping().Result()
 }
