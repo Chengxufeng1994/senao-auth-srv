@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os"
+	"os/signal"
 	"sync"
 	"time"
 
@@ -57,7 +60,8 @@ func main() {
 	}()
 	wg.Wait()
 
-	runGinSrv(config, database)
+	handler := api.NewHandler(config, database)
+	runHttpSrv(config, handler)
 }
 
 func runGinSrv(config util.Config, database *db.Database) {
@@ -71,4 +75,31 @@ func runGinSrv(config util.Config, database *db.Database) {
 	if err != nil {
 		log.Fatal().Msg("cannot start server")
 	}
+}
+
+func runHttpSrv(config util.Config, handler *api.Handler) {
+	addr := fmt.Sprintf("%s:%d", config.ServerHost, config.ServerPort)
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: handler.Router,
+	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			log.Info().Msgf("cannot start server error: %s\n", err)
+		}
+	}()
+	// Wait for interrupt signal to gracefully shutdown the server with
+	// a timeout of 5 seconds.
+	quit := make(chan os.Signal)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	log.Info().Msg("shutdown Server ...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal().Msgf("server shutdown error: %s\n", err)
+	}
+	log.Info().Msg("server exiting")
 }
