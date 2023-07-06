@@ -4,42 +4,43 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"go.uber.org/fx"
 
-	"senao-auth-srv/db"
 	"senao-auth-srv/docs"
 	"senao-auth-srv/middleware"
-	"senao-auth-srv/repository"
 	"senao-auth-srv/service"
 	"senao-auth-srv/util"
 )
 
 type Handler struct {
-	config util.Config
-	store  *db.Database
-	Router *gin.Engine
+	config         util.Config
+	accountService service.AccountService
 }
 
-func NewHandler(config util.Config, store *db.Database) *Handler {
+var Module = fx.Options(
+	fx.Provide(
+		NewHandler,
+	),
+	fx.Invoke(registerService),
+)
+
+func NewHandler(config util.Config, accountService service.AccountService) *Handler {
 	handler := &Handler{
-		config: config,
-		store:  store,
+		config:         config,
+		accountService: accountService,
 	}
-	handler.setRoutes()
 	return handler
 }
 
-func (h *Handler) setRoutes() {
-	router := gin.Default()
+func registerService(router *gin.Engine, h *Handler) {
 	router.Use(middleware.ErrorHandler())
-	accountRepo := repository.NewAccountRepoImpl(h.store)
-	accountSvc := service.NewAccountServiceImpl(accountRepo)
 
 	docs.SwaggerInfo.BasePath = "/api/v1"
 	v1 := router.Group("/api/v1")
 	{
-		NewAccountHandler(v1, accountSvc)
+		v1.POST("/register", h.createAccount)
+		v1.POST("/verify", h.verifyAccount)
 	}
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
-	h.Router = router
 }

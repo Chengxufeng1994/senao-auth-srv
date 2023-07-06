@@ -17,13 +17,13 @@ type AccountHandler struct {
 	accountService service.AccountService
 }
 
-func NewAccountHandler(router *gin.RouterGroup, accountService service.AccountService) {
-	h := AccountHandler{
-		accountService,
-	}
-	router.POST("/register", h.createAccount)
-	router.POST("/verify", h.verifyAccount)
-}
+//func NewAccountHandler(router *gin.RouterGroup, accountService service.AccountService) {
+//	h := AccountHandler{
+//		accountService,
+//	}
+//	router.POST("/register", h.createAccount)
+//	router.POST("/verify", h.verifyAccount)
+//}
 
 type createAccountRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=32"`
@@ -62,7 +62,7 @@ func ValidationErrorToText(e validator.FieldError) string {
 // @Success 200 {object} creatAccountResponse
 // @Failed 	200 {object} creatAccountResponse
 // @Router 	/register [post]
-func (h *AccountHandler) createAccount(ctx *gin.Context) {
+func (h *Handler) createAccount(ctx *gin.Context) {
 	var req createAccountRequest
 	var res creatAccountResponse
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -129,7 +129,7 @@ type verifyAccountResponse struct {
 // @Param   verifyAccountRequest body verifyAccountRequest true "create account parameters"
 // @Success 200 {object} verifyAccountResponse
 // @Router 	/verify [post]
-func (h *AccountHandler) verifyAccount(ctx *gin.Context) {
+func (h *Handler) verifyAccount(ctx *gin.Context) {
 	var req verifyAccountRequest
 	var res verifyAccountResponse
 	if err := ctx.ShouldBindJSON(&req); err != nil {

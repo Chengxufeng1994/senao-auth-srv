@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 
+	"go.uber.org/fx"
+
 	"senao-auth-srv/model"
 	"senao-auth-srv/repository"
 )
@@ -16,6 +18,12 @@ type AccountService interface {
 	GetAccountRetryById(ctx context.Context, id string) (string, error)
 	UpdateAccountRetryById(ctx context.Context, id string) error
 }
+
+var AccountServiceModule = fx.Options(
+	fx.Provide(
+		NewAccountServiceImpl,
+	),
+)
 
 func NewAccountServiceImpl(accountRepo repository.AccountRepo) AccountService {
 	return &AccountServiceImpl{

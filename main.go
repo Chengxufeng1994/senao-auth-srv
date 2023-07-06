@@ -6,16 +6,19 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/fx"
 
 	"senao-auth-srv/api"
-	"senao-auth-srv/db"
-
+	_db "senao-auth-srv/db"
+	_redis "senao-auth-srv/redis"
+	"senao-auth-srv/repository"
+	"senao-auth-srv/server"
+	"senao-auth-srv/service"
 	"senao-auth-srv/util"
 )
 
@@ -25,81 +28,51 @@ func main() {
 		log.Fatal().Msg("cannot load config")
 	}
 
-	if config.Environment == "production" {
-		gin.SetMode(gin.ReleaseMode)
-	} else if config.Environment == "development" {
-		gin.SetMode(gin.DebugMode)
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	app := fx.New(
+		fx.Supply(config),
+		_redis.Module,
+		_db.Module,
+		server.Module,
+		api.Module,
+		service.Module,
+		repository.AccountRepoModule,
+		fx.Invoke(startHttpServer),
+	)
+
+	if err := app.Start(context.Background()); err != nil {
+		log.Fatal().Msgf("main: cannot start app err: %s", err)
+		return
 	}
 
-	redisAddr := fmt.Sprintf("%s:%d", config.RedisHost, config.RedisPort)
-	redisPassword := config.RedisPassword
-	database := db.New(redisAddr, redisPassword)
+	stopChan := make(chan os.Signal, 1)
+	signal.Notify(stopChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	<-stopChan
+	log.Info().Msg("main: shutting down server...")
 
-	const maxRetries int = 3
-	const timeout = 3
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		var retries int
-		for {
-			_, err = database.Conn()
-			if err == nil {
-				log.Info().Msg("connect to database successfully")
-				break
-			}
-			retries++
-			if retries == maxRetries {
-				log.Fatal().Msg("cannot connect to database")
-			}
-			log.Error().Msgf("connect to database - retrying... %d", retries)
-			time.Sleep(timeout * time.Second)
-		}
-		wg.Done()
-	}()
-	wg.Wait()
-
-	handler := api.NewHandler(config, database)
-	runHttpSrv(config, handler)
-}
-
-func runGinSrv(config util.Config, database *db.Database) {
-	serverAddr := fmt.Sprintf("%s:%d", config.ServerHost, config.ServerPort)
-	srv, err := api.New(config, database)
-	if err != nil {
-		log.Fatal().Msg("cannot create server")
-	}
-
-	err = srv.Start(serverAddr)
-	if err != nil {
-		log.Fatal().Msg("cannot start server")
+	stopCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := app.Stop(stopCtx); err != nil {
+		log.Fatal().Msgf("main: cannot stop app err: %s", err)
 	}
 }
 
-func runHttpSrv(config util.Config, handler *api.Handler) {
+func startHttpServer(lc fx.Lifecycle, config util.Config, gin *gin.Engine) *http.Server {
 	addr := fmt.Sprintf("%s:%d", config.ServerHost, config.ServerPort)
 	srv := &http.Server{
 		Addr:    addr,
-		Handler: handler.Router,
+		Handler: gin,
 	}
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			log.Info().Msg("starting HTTP server")
+			go srv.ListenAndServe()
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			log.Info().Msg("stopping HTTP server")
+			return nil
+		},
+	})
 
-	go func() {
-		if err := srv.ListenAndServe(); err != nil {
-			log.Info().Msgf("cannot start server error: %s\n", err)
-		}
-	}()
-	// Wait for interrupt signal to gracefully shutdown the server with
-	// a timeout of 5 seconds.
-	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
-	log.Info().Msg("shutdown Server ...")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal().Msgf("server shutdown error: %s\n", err)
-	}
-	log.Info().Msg("server exiting")
+	return srv
 }
